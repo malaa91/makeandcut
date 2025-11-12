@@ -7,6 +7,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showMultiCutEditor, setShowMultiCutEditor] = useState(false);
 
   const handleVideoUpload = useCallback((file) => {
     if (file && file.type.startsWith('video/')) {
@@ -45,32 +46,32 @@ function App() {
         <h1>MakeAndCut</h1>
         <p>Coupez vos vidéos comme un professionnel</p>
           <button 
-    onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
-    className="cta-button"
-    style={{
-      background: 'rgba(255,255,255,0.2)',
-      color: 'white',
-      border: '2px solid rgba(255,255,255,0.3)',
-      padding: '12px 24px',
-      borderRadius: '50px',
-      marginTop: '20px',
-      cursor: 'pointer',
-      fontSize: '1em',
-      fontWeight: '600',
-      backdropFilter: 'blur(10px)',
-      transition: 'all 0.3s ease'
-    }}
-    onMouseOver={(e) => {
-      e.target.style.background = 'rgba(255,255,255,0.3)';
-      e.target.style.transform = 'translateY(-2px)';
-    }}
-    onMouseOut={(e) => {
-      e.target.style.background = 'rgba(255,255,255,0.2)';
-      e.target.style.transform = 'translateY(0)';
-    }}
-  >
-     Voir les tarifs
-  </button>
+            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
+            className="cta-button"
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              color: 'white',
+              border: '2px solid rgba(255,255,255,0.3)',
+              padding: '12px 24px',
+              borderRadius: '50px',
+              marginTop: '20px',
+              cursor: 'pointer',
+              fontSize: '1em',
+              fontWeight: '600',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.3)';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.background = 'rgba(255,255,255,0.2)';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            Voir les tarifs
+          </button>
       </header>
 
       <div className="upload-container">
@@ -101,7 +102,7 @@ function App() {
 
           {selectedFile && (
             <div className="file-info-card">
-              <h4>✅ Fichier sélectionné</h4>
+              <h4> Fichier sélectionné</h4>
               <div className="file-details">
                 <div className="file-detail">
                   <strong>Nom:</strong>
@@ -125,18 +126,29 @@ function App() {
           
           {video && (
             <div className="video-preview-section">
-              <h4>👁️ Aperçu de la vidéo</h4>
+              <h4>Aperçu de la vidéo</h4>
               <div className="video-container">
                 <video controls src={video} />
               </div>
-              <button 
-                onClick={() => setShowEditor(true)} 
-                className="editor-btn"
-              >
-                ✂️ Ouvrir l'éditeur avancé
-              </button>
+              <div className="editor-options">
+                <button 
+                  onClick={() => setShowEditor(true)} 
+                  className="editor-btn"
+                >
+                  Éditeur simple (1 partie)
+                </button>
+                <button 
+                  onClick={() => setShowMultiCutEditor(true)} 
+                  className="editor-btn multi-cut-btn"
+                >
+                  Éditeur multiple (2+ parties)
+                </button>
+              </div>
             </div>
           )}
+
+
+
         </div>
       </div>
 
@@ -144,6 +156,14 @@ function App() {
         <VideoEditor 
           videoFile={selectedFile}
           onClose={() => setShowEditor(false)}
+          backendUrl={backendUrl}
+        />
+      )}
+
+      {showMultiCutEditor && selectedFile && (
+        <MultiCutEditor 
+          videoFile={selectedFile}
+          onClose={() => setShowMultiCutEditor(false)}
           backendUrl={backendUrl}
         />
       )}
