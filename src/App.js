@@ -3,6 +3,7 @@ import './App.css';
 import VideoEditor from './components/VideoEditor';
 import MultiCutEditor from './components/MultiCutEditor'; // AJOUT IMPORT
 import Pricing from './components/Pricing';
+import AdvancedVideoEditor from './components/AdvancedVideoEditor';
 
 function App() {
   const [video, setVideo] = useState(null);
@@ -10,7 +11,7 @@ function App() {
   const [showEditor, setShowEditor] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showMultiCutEditor, setShowMultiCutEditor] = useState(false);
-
+  const [showAdvancedEditor, setShowAdvancedEditor] = useState(false);
   const handleVideoUpload = useCallback((file) => {
     if (file && file.type.startsWith('video/')) {
       setVideo(URL.createObjectURL(file));
@@ -132,24 +133,32 @@ function App() {
               <div className="video-container">
                 <video controls src={video} />
               </div>
-              <div className="editor-options">
-                <button 
-                  onClick={() => setShowEditor(true)} 
-                  className="editor-btn"
-                >
-                  Éditeur simple (1 partie)
-                </button>
-                <button 
-                  onClick={() => setShowMultiCutEditor(true)} 
-                  className="editor-btn multi-cut-btn"
-                >
-                  Éditeur multiple (2+ parties)
-                </button>
-              </div>
+                <div className="editor-options">
+                  <button onClick={() => setShowEditor(true)} className="editor-btn">
+                    Éditeur simple
+                  </button>
+                  <button onClick={() => setShowMultiCutEditor(true)} className="editor-btn">
+                    Éditeur multiple
+                  </button>
+                  <button onClick={() => setShowAdvancedEditor(true)} className="editor-btn advanced-btn">
+                    Édition avancée 
+                  </button>
+                </div>
+              
             </div>
           )}
         </div>
       </div>
+
+
+
+  {showAdvancedEditor && selectedFile && (
+    <AdvancedVideoEditor 
+      videoFile={selectedFile}
+      onClose={() => setShowAdvancedEditor(false)}
+      backendUrl={backendUrl}
+    />
+  )}
 
       {showEditor && selectedFile && (
         <VideoEditor 
