@@ -1,6 +1,12 @@
 import React from 'react';
 import '../styles/Pricing.css';
 import { loadStripe } from '@stripe/stripe-js';
+
+// Initialise Stripe avec ta clé publique
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+const backendUrl = process.env.REACT_APP_BACKEND_URL;
+
+
 function Pricing() {
   const plans = [
     {
@@ -49,40 +55,36 @@ function Pricing() {
     }
   ];
 
-const handlePlanSelect = async (planType) => {
+const handlePlanSelect = async (planType, planName) => {
   if (planType === 'free') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    // Définir les priceId en fonction du plan
-    const priceIds = {
-      starter: 'price_1SSk8nAsQ5zramhi4fq9NVOc', // Remplace par ton priceId Stripe pour Starter
-      pro: 'price_1SSk9iAsQ5zramhiNMSKEXRW'      // Remplace par ton priceId Stripe pour Pro
-    };
+    return;
+  }
 
-    const priceId = priceIds[planType];
+  const priceIds = {
+    starter: 'price_1SSk8nAsQ5zramhi4fq9NVOc',
+    pro: 'price_1SSk9iAsQ5zramhiNMSKEXRW'
+  };
 
-    try {
-      const response = await fetch('https://makeandcut-backend.onrender.com/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ priceId }),
-      });
+  const priceId = priceIds[planType];
 
-      const { id } = await response.json();
+  try {
+    const response = await fetch(`${backendUrl}/api/create-checkout-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priceId, planName }),
+    });
 
-      // Redirection vers Stripe Checkout
-      const stripe = await loadStripe('pk_test_123456789'); // Remplace par ta clé publique Stripe
-      const { error } = await stripe.redirectToCheckout({ sessionId: id });
+    const data = await response.json();
 
-      if (error) {
-        console.error('Erreur lors de la redirection vers Stripe:', error);
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('Une erreur est survenue lors de la redirection vers la page de paiement.');
+    if (response.ok && data.url) {
+      // NOUVELLE MÉTHODE - Redirection directe vers l'URL Stripe
+      window.location.href = data.url;
+    } else {
+      alert('Erreur: ' + (data.error || 'Erreur inconnue'));
     }
+  } catch (error) {
+    alert('Erreur réseau: ' + error.message);
   }
 };
 
@@ -117,7 +119,7 @@ const handlePlanSelect = async (planType) => {
 
             <button 
               className={`plan-btn ${plan.popular ? 'popular-btn' : ''} ${plan.type}-btn`}
-              onClick={() => handlePlanSelect(plan.type)}
+              onClick={() => handlePlanSelect(plan.type, plan.name)}
             >
               {plan.cta}
             </button>
