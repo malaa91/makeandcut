@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '../styles/VideoEditor.css';
-import VideoTimeline from './VideoTimeline'; // AJOUT
+import VideoTimeline from './VideoTimeline';
 
 function VideoEditor({ videoFile, onClose, backendUrl }) {
   const [startTime, setStartTime] = useState(0);
@@ -78,7 +78,7 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
   const handleCutVideo = async () => {
     setProcessing(true);
     
-    console.log('✂️ Début du découpage:', {
+    console.log('Début du découpage:', {
       startTime, 
       endTime, 
       duration: endTime - startTime,
@@ -96,15 +96,15 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
         body: formData,
       });
 
-      console.log('📡 Réponse serveur:', response.status);
+      console.log('Réponse serveur:', response.status);
 
       const result = await response.json();
-      console.log('📦 Données reçues:', result);
+      console.log('Données reçues:', result);
 
       if (response.ok && result.success) {
         // SUCCÈS - Téléchargement automatique
         if (result.downloadUrl) {
-          console.log('📥 Téléchargement:', result.downloadUrl);
+          console.log('Téléchargement:', result.downloadUrl);
           
           // Créer un lien de téléchargement invisible
           const downloadLink = document.createElement('a');
@@ -114,22 +114,22 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
           downloadLink.click();
           document.body.removeChild(downloadLink);
           
-          alert(`🎉 ${result.message}\n\n📊 Détails:\n- Durée: ${result.details.duration}\n- Format: ${result.details.outputFormat}\n- Taille: ${result.details.outputSize || 'Optimisée'}`);
+          alert(`${result.message}\n\nDétails:\n- Durée: ${result.details.duration}\n- Format: ${result.details.outputFormat}\n- Taille: ${result.details.outputSize || 'Optimisée'}`);
         } else {
-          alert(`✅ ${result.message}`);
+          alert(result.message);
         }
         
         // Afficher les détails dans la console
         if (result.details) {
-          console.log('📋 Détails du traitement:', result.details);
+          console.log('Détails du traitement:', result.details);
         }
       } else {
-        console.error('❌ Erreur backend:', result);
-        alert('❌ Erreur: ' + (result.error || result.details || 'Erreur inconnue'));
+        console.error('Erreur backend:', result);
+        alert('Erreur: ' + (result.error || result.details || 'Erreur inconnue'));
       }
     } catch (error) {
-      console.error('❌ Erreur réseau:', error);
-      alert('❌ Erreur de connexion: ' + error.message);
+      console.error('Erreur réseau:', error);
+      alert('Erreur de connexion: ' + error.message);
     }
     
     setProcessing(false);
@@ -140,11 +140,11 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
     getVideoInfo();
   }, []);
 
-return (
+  return (
     <div className="video-editor-overlay">
       <div className="video-editor">
         <div className="editor-header">
-          <h2>✂️ Éditeur Vidéo Professionnel</h2>
+          <h2>Editeur Vidéo Professionnel</h2>
           <button onClick={onClose}>×</button>
         </div>
 
@@ -162,7 +162,7 @@ return (
           <div className="cut-controls">
             <h3>Paramètres de coupe</h3>
             
-            {/* TIMELINE AJOUTÉE ICI */}
+            {/* Timeline */}
             <VideoTimeline
               duration={duration}
               startTime={startTime}
@@ -171,7 +171,7 @@ return (
               videoRef={videoRef}
             />
 
-            {/* Contrôles manuels existants */}
+            {/* Contrôles manuels */}
             <div className="time-controls-manual">
               <div className="time-input">
                 <label>Temps de début (secondes):</label>
@@ -198,7 +198,34 @@ return (
               </div>
             </div>
 
-            {/* ... reste du code existant ... */}
+            <div className="duration-info">
+              <p>Durée totale: <strong>{duration.toFixed(2)}s</strong></p>
+              <p>Durée sélectionnée: <strong>{(endTime - startTime).toFixed(2)}s</strong></p>
+              <p>Format: <strong>{videoAspectRatio === 'portrait' ? 'Portrait (9:16)' : videoAspectRatio === 'landscape' ? 'Paysage (16:9)' : 'Carré'}</strong></p>
+            </div>
+
+            <div className="action-buttons">
+              <button 
+                onClick={handleCutVideo} 
+                disabled={processing || startTime >= endTime || duration === 0}
+                className="process-btn"
+              >
+                {processing ? (
+                  <div className="processing-indicator">
+                    <div className="spinner"></div>
+                    Traitement en cours...
+                  </div>
+                ) : (
+                  'Couper la vidéo'
+                )}
+              </button>
+              
+              {startTime >= endTime && duration > 0 && (
+                <p style={{ color: '#e53e3e', fontSize: '14px', marginTop: '10px' }}>
+                  Le temps de fin doit être supérieur au temps de début
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
