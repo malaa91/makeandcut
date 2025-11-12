@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import './App.css';
 import VideoEditor from './components/VideoEditor';
+import MultiCutEditor from './components/MultiCutEditor'; // AJOUT IMPORT
 import Pricing from './components/Pricing';
+
 function App() {
   const [video, setVideo] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -45,38 +47,38 @@ function App() {
       <header className="app-header">
         <h1>MakeAndCut</h1>
         <p>Coupez vos vidéos comme un professionnel</p>
-          <button 
-            onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
-            className="cta-button"
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              border: '2px solid rgba(255,255,255,0.3)',
-              padding: '12px 24px',
-              borderRadius: '50px',
-              marginTop: '20px',
-              cursor: 'pointer',
-              fontSize: '1em',
-              fontWeight: '600',
-              backdropFilter: 'blur(10px)',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.background = 'rgba(255,255,255,0.3)';
-              e.target.style.transform = 'translateY(-2px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.background = 'rgba(255,255,255,0.2)';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Voir les tarifs
-          </button>
+        <button 
+          onClick={() => document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })}
+          className="cta-button"
+          style={{
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '2px solid rgba(255,255,255,0.3)',
+            padding: '12px 24px',
+            borderRadius: '50px',
+            marginTop: '20px',
+            cursor: 'pointer',
+            fontSize: '1em',
+            fontWeight: '600',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = 'rgba(255,255,255,0.3)';
+            e.target.style.transform = 'translateY(-2px)';
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = 'rgba(255,255,255,0.2)';
+            e.target.style.transform = 'translateY(0)';
+          }}
+        >
+          Voir les tarifs
+        </button>
       </header>
 
       <div className="upload-container">
         <div className="upload-section">
-          <h3>🎬 Commencez par importer votre vidéo</h3>
+          <h3>Commencez par importer votre vidéo</h3>
           
           <div 
             className={`file-drop-zone ${isDragOver ? 'drag-over' : ''}`}
@@ -102,7 +104,7 @@ function App() {
 
           {selectedFile && (
             <div className="file-info-card">
-              <h4> Fichier sélectionné</h4>
+              <h4>Fichier sélectionné</h4>
               <div className="file-details">
                 <div className="file-detail">
                   <strong>Nom:</strong>
@@ -146,9 +148,6 @@ function App() {
               </div>
             </div>
           )}
-
-
-
         </div>
       </div>
 
@@ -167,7 +166,8 @@ function App() {
           backendUrl={backendUrl}
         />
       )}
-       <Pricing />
+      
+      <Pricing />
     </div>
   );
 }
