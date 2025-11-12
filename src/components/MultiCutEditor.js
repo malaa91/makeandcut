@@ -1,19 +1,38 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import '../styles/MultiCutEditor.css';
 
 function MultiCutEditor({ videoFile, onClose, backendUrl }) {
-  const [cuts, setCuts] = useState([{ startTime: 0, endTime: 0, name: '' }]);
+  const [cuts, setCuts] = useState([]);
   const [duration, setDuration] = useState(0);
   const [processing, setProcessing] = useState(false);
   const videoRef = useRef();
+  const videoUrlRef = useRef(); // Référence pour l'URL stable
 
-  // Charger la durée de la vidéo
+  // Stocker l'URL de la vidéo une fois pour éviter les re-renders
+  if (!videoUrlRef.current) {
+    videoUrlRef.current = URL.createObjectURL(videoFile);
+  }
+
+  // Charger la durée de la vidéo une seule fois
   const handleVideoLoad = (e) => {
     const video = e.target;
-    setDuration(video.duration || 0);
-    // Initialiser la première coupe avec la durée totale
-    setCuts([{ startTime: 0, endTime: video.duration || 0, name: 'Partie 1' }]);
+    const videoDuration = video.duration || 0;
+    setDuration(videoDuration);
+    
+    // Initialiser la première coupe seulement si c'est la première fois
+    if (cuts.length === 0) {
+      setCuts([{ startTime: 0, endTime: videoDuration, name: 'Partie 1' }]);
+    }
   };
+
+  // Nettoyer l'URL à la fermeture
+  useEffect(() => {
+    return () => {
+      if (videoUrlRef.current) {
+        URL.revokeObjectURL(videoUrlRef.current);
+      }
+    };
+  }, []);
 
   // Ajouter une nouvelle coupe
   const addCut = () => {
@@ -21,7 +40,7 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
     setCuts([
       ...cuts, 
       { 
-        startTime: lastCut.endTime, 
+        startTime: lastCut ? lastCut.endTime : 0, 
         endTime: duration, 
         name: `Partie ${cuts.length + 1}` 
       }
@@ -74,14 +93,13 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
     setProcessing(true);
 
     try {
+      const formData = new FormData();
+      formData.append('video', videoFile);
+      formData.append('cuts', JSON.stringify(cuts));
+
       const response = await fetch(`${backendUrl}/api/cut-video-multiple`, {
         method: 'POST',
-        body: (() => {
-          const formData = new FormData();
-          formData.append('video', videoFile);
-          formData.append('cuts', JSON.stringify(cuts));
-          return formData;
-        })(),
+        body: formData,
       });
 
       const result = await response.json();
@@ -90,16 +108,18 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
         // Télécharger chaque partie
         result.results.forEach((part, index) => {
           if (part.success && part.downloadUrl) {
-            const downloadLink = document.createElement('a');
-            downloadLink.href = part.downloadUrl;
-            downloadLink.download = `${part.name.replace(/\s+/g, '-')}.mp4`;
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
+            setTimeout(() => {
+              const downloadLink = document.createElement('a');
+              downloadLink.href = part.downloadUrl;
+              downloadLink.download = `${part.name.replace(/\s+/g, '-')}.mp4`;
+              document.body.appendChild(downloadLink);
+              downloadLink.click();
+              document.body.removeChild(downloadLink);
+            }, index * 500); // Délai pour éviter les blocages
           }
         });
 
-        alert(`✅ ${result.message}\n\n${result.results.length} partie(s) téléchargée(s)`);
+        alert(`${result.message}\n\n${result.results.length} partie(s) téléchargée(s)`);
       } else {
         alert('Erreur: ' + (result.error || 'Erreur inconnue'));
       }
@@ -123,9 +143,10 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
             <video
               ref={videoRef}
               controls
-              src={URL.createObjectURL(videoFile)}
+              src={videoUrlRef.current} // URL stable
               onLoadedMetadata={handleVideoLoad}
               preload="metadata"
+              key="video-player" // Key stable
             />
           </div>
 
@@ -141,6 +162,7 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
                       <button 
                         onClick={() => removeCut(index)}
                         className="remove-cut-btn"
+                        type="button"
                       >
                         Supprimer
                       </button>
@@ -194,23 +216,26 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
             </div>
 
             <div className="multi-cut-actions">
-              <button onClick={addCut} className="add-cut-btn">
+              <button onClick={addCut} className="add-cut-btn" type="button">
                 + Ajouter une partie
               </button>
 
               <button 
                 onClick={handleMultiCut} 
-                disabled={processing}
+                disabled={processing || cuts.length === 0}
                 className="process-btn"
+                type="button"
               >
                 {processing ? 'Traitement en cours...' : `Découper en ${cuts.length} partie(s)`}
               </button>
             </div>
 
-            <div className="multi-cut-info">
-              <p>Durée totale de la vidéo: <strong>{duration.toFixed(2)}s</strong></p>
-              <p>Durée totale sélectionnée: <strong>{cuts.reduce((total, cut) => total + (cut.endTime - cut.startTime), 0).toFixed(2)}s</strong></p>
-            </div>
+            {duration > 0 && (
+              <div className="multi-cut-info">
+                <p>Durée totale de la vidéo: <strong>{duration.toFixed(2)}s</strong></p>
+                <p>Durée totale sélectionnée: <strong>{cuts.reduce((total, cut) => total + (cut.endTime - cut.startTime), 0).toFixed(2)}s</strong></p>
+              </div>
+            )}
           </div>
         </div>
       </div>
