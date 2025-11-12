@@ -9,6 +9,7 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
   const [videoAspectRatio, setVideoAspectRatio] = useState('landscape');
   const videoRef = useRef();
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [progress, setProgress] = useState(0);
   // Détecter le format de la vidéo
   const detectAspectRatio = (videoElement) => {
     const width = videoElement.videoWidth;
@@ -67,7 +68,13 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
   // Couper la vidéo
   const handleCutVideo = async () => {
     setProcessing(true);
-    setDownloadUrl(null);
+    
+    console.log('✂️ Début du découpage:', {
+      startTime, 
+      endTime, 
+      duration: endTime - startTime,
+      file: videoFile.name
+    });
 
     const formData = new FormData();
     formData.append('video', videoFile);
@@ -80,15 +87,39 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
         body: formData,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setDownloadUrl(result.downloadUrl);
-        alert(`✅ ${result.message}`);
+      console.log('📡 Réponse serveur:', response.status);
+
+      const result = await response.json();
+      console.log('📦 Données reçues:', result);
+
+      if (response.ok && result.success) {
+        // SUCCÈS - Téléchargement automatique
+        if (result.downloadUrl) {
+          console.log('📥 Téléchargement:', result.downloadUrl);
+          
+          // Créer un lien de téléchargement invisible
+          const downloadLink = document.createElement('a');
+          downloadLink.href = result.downloadUrl;
+          downloadLink.download = `makeandcut-${Date.now()}.mp4`;
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          
+          alert(`🎉 ${result.message}\n\n📊 Détails:\n- Durée: ${result.details.duration}\n- Format: ${result.details.outputFormat}\n- Taille: ${result.details.outputSize || 'Optimisée'}`);
+        } else {
+          alert(`✅ ${result.message}`);
+        }
+        
+        // Afficher les détails dans la console
+        if (result.details) {
+          console.log('📋 Détails du traitement:', result.details);
+        }
       } else {
-        const errorText = await response.text();
-        alert('❌ Erreur lors du traitement: ' + errorText);
+        console.error('❌ Erreur backend:', result);
+        alert('❌ Erreur: ' + (result.error || result.details || 'Erreur inconnue'));
       }
     } catch (error) {
+      console.error('❌ Erreur réseau:', error);
       alert('❌ Erreur de connexion: ' + error.message);
     }
     
@@ -164,12 +195,19 @@ function VideoEditor({ videoFile, onClose, backendUrl }) {
 
             <div className="action-buttons">
               <button 
-                onClick={handleCutVideo} 
-                disabled={processing || startTime >= endTime || duration === 0}
-                className="process-btn"
-              >
-                {processing ? ' Traitement en cours...' : ' Couper la vidéo'}
-              </button>
+  onClick={handleCutVideo} 
+  disabled={processing || startTime >= endTime || duration === 0}
+  className="process-btn"
+>
+  {processing ? (
+    <div className="processing-indicator">
+      <div className="spinner"></div>
+      ⏳ Traitement en cours... {progress}%
+    </div>
+  ) : (
+    '✂️ Couper la vidéo'
+  )}
+</button>
               
               {startTime >= endTime && duration > 0 && (
                 <p style={{ color: '#e53e3e', fontSize: '14px', marginTop: '10px' }}>
