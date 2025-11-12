@@ -1,37 +1,99 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import '../styles/MultiCutEditor.css';
 
 function MultiCutEditor({ videoFile, onClose, backendUrl }) {
   const [cuts, setCuts] = useState([]);
   const [duration, setDuration] = useState(0);
   const [processing, setProcessing] = useState(false);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [videoFormat, setVideoFormat] = useState('landscape');
   const videoRef = useRef();
-  const videoUrlRef = useRef(); // Référence pour l'URL stable
 
-  // Stocker l'URL de la vidéo une fois pour éviter les re-renders
-  if (!videoUrlRef.current) {
-    videoUrlRef.current = URL.createObjectURL(videoFile);
-  }
-
-  // Charger la durée de la vidéo une seule fois
-  const handleVideoLoad = (e) => {
-    const video = e.target;
-    const videoDuration = video.duration || 0;
-    setDuration(videoDuration);
-    
-    // Initialiser la première coupe seulement si c'est la première fois
-    if (cuts.length === 0) {
-      setCuts([{ startTime: 0, endTime: videoDuration, name: 'Partie 1' }]);
-    }
-  };
-
-  // Nettoyer l'URL à la fermeture
+  // Créer et gérer l'URL blob
   useEffect(() => {
-    return () => {
-      if (videoUrlRef.current) {
-        URL.revokeObjectURL(videoUrlRef.current);
+    if (videoFile) {
+      const url = URL.createObjectURL(videoFile);
+      setVideoUrl(url);
+      console.log("✅ URL blob créée:", url);
+
+      return () => {
+        URL.revokeObjectURL(url);
+        console.log("🔒 URL blob révoquée");
+      };
+    }
+  }, [videoFile]);
+
+  // Gestion robuste du chargement vidéo
+  const handleVideoLoad = useCallback((e) => {
+    const video = e.target;
+    console.log("🎬 Événement vidéo:", e.type);
+    console.log("📊 ReadyState:", video.readyState);
+    console.log("⏱️ Durée initiale:", video.duration);
+
+    // Détection du format vidéo
+    if (video.videoWidth && video.videoHeight) {
+      const isPortrait = video.videoHeight > video.videoWidth;
+      setVideoFormat(isPortrait ? 'portrait' : 'landscape');
+      console.log(`📐 Format détecté: ${isPortrait ? 'portrait' : 'landscape'} (${video.videoWidth}x${video.videoHeight})`);
+    }
+
+    const checkDuration = () => {
+      if (video.readyState >= 2) {
+        if (video.duration && video.duration > 0 && video.duration !== Infinity) {
+          const videoDuration = video.duration;
+          console.log("✅ Durée valide trouvée:", videoDuration);
+          
+          setDuration(videoDuration);
+          
+          if (cuts.length === 0) {
+            setCuts([{ 
+              startTime: 0, 
+              endTime: videoDuration, 
+              name: 'Partie 1' 
+            }]);
+          }
+          return true;
+        }
       }
+      return false;
     };
+
+    // Essayer immédiatement
+    if (!checkDuration()) {
+      // Réessayer avec un intervalle
+      const interval = setInterval(() => {
+        console.log("🔄 Vérification durée...", video.duration);
+        if (checkDuration()) {
+          clearInterval(interval);
+        }
+      }, 100);
+
+      // Arrêter après 5 secondes
+      setTimeout(() => {
+        clearInterval(interval);
+        if (duration === 0) {
+          console.warn("⚠️ Impossible de récupérer la durée");
+          // Valeur par défaut sécurisée
+          setCuts([{ startTime: 0, endTime: 10, name: 'Partie 1' }]);
+        }
+      }, 5000);
+    }
+  }, [cuts.length, duration]);
+
+  // Écouter les changements de durée
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      const handleDurationChange = () => {
+        console.log("📈 Duration change:", video.duration);
+        if (video.duration > 0) {
+          setDuration(video.duration);
+        }
+      };
+
+      video.addEventListener('durationchange', handleDurationChange);
+      return () => video.removeEventListener('durationchange', handleDurationChange);
+    }
   }, []);
 
   // Ajouter une nouvelle coupe
@@ -83,26 +145,45 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
   };
 
   // Traiter le découpage multiple
-  const handleMultiCut = async () => {
+const handleMultiCut = async () => {
     const validationError = validateCuts();
     if (validationError) {
-      alert(validationError);
-      return;
+        alert(validationError);
+        return;
     }
 
+    console.log("📤 Données envoyées au backend:");
+    console.log("Cuts:", cuts);
+    console.log("Video file:", videoFile.name);
+    
     setProcessing(true);
 
     try {
-      const formData = new FormData();
-      formData.append('video', videoFile);
-      formData.append('cuts', JSON.stringify(cuts));
+        const formData = new FormData();
+        formData.append('video', videoFile);
+        formData.append('cuts', JSON.stringify(cuts));
 
-      const response = await fetch(`${backendUrl}/api/cut-video-multiple`, {
+        // Afficher le contenu de FormData pour debug
+        for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+        }
+
+        const response = await fetch(`${backendUrl}/api/cut-video-multiple`, {
         method: 'POST',
         body: formData,
-      });
+        });
 
-      const result = await response.json();
+        console.log("📥 Réponse du backend:", response.status);
+
+        if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ Erreur détaillée:", errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log("✅ Résultat:", result);
+
 
       if (response.ok && result.success) {
         // Télécharger chaque partie
@@ -115,7 +196,7 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
               document.body.appendChild(downloadLink);
               downloadLink.click();
               document.body.removeChild(downloadLink);
-            }, index * 500); // Délai pour éviter les blocages
+            }, index * 500);
           }
         });
 
@@ -124,11 +205,12 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
         alert('Erreur: ' + (result.error || 'Erreur inconnue'));
       }
     } catch (error) {
-      alert('Erreur de connexion: ' + error.message);
-    }
+    console.error("💥 Erreur complète:", error);
+    alert('Erreur: ' + error.message);
+  }
 
-    setProcessing(false);
-  };
+  setProcessing(false);
+};
 
   return (
     <div className="multi-cut-overlay">
@@ -139,15 +221,21 @@ function MultiCutEditor({ videoFile, onClose, backendUrl }) {
         </div>
 
         <div className="editor-content">
-          <div className="video-preview">
-            <video
-              ref={videoRef}
-              controls
-              src={videoUrlRef.current} // URL stable
-              onLoadedMetadata={handleVideoLoad}
-              preload="metadata"
-              key="video-player" // Key stable
-            />
+          <div className={`video-preview ${videoFormat}`}>
+            {videoUrl && (
+              <video
+                ref={videoRef}
+                controls
+                src={videoUrl}
+                onLoadedMetadata={handleVideoLoad}
+                onCanPlay={handleVideoLoad}
+                onCanPlayThrough={handleVideoLoad}
+                preload="metadata"
+                crossOrigin="anonymous"
+              >
+                <track kind="captions" />
+              </video>
+            )}
           </div>
 
           <div className="multi-cut-controls">
