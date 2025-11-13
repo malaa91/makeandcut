@@ -99,7 +99,7 @@ function AdvancedVideoEditor({ videoFile, onClose, backendUrl }) {
         <div className="editor-layout">
           {/* Panneau de prévisualisation */}
           <div className="preview-panel">
-            <div className="video-container">
+            <div className="video-preview">
               <video
                 ref={videoRef}
                 controls
